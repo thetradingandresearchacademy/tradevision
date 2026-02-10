@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeVision | Institutional Auto-Analysis</title>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        :root { --bg: #050505; --panel: #111; --text: #ccc; --gold: #D4AF37; --bull: #089981; --bear: #f23645; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', monospace; height: 100vh; display: flex; overflow: hidden; }
+
+        /* CONTROL PANEL */
+        .sidebar { width: 320px; background: var(--panel); border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .logo { font-size: 18px; font-weight: bold; color: white; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .logo span { color: var(--gold); }
+
+        .drop-area {
+            border: 2px dashed #444; border-radius: 6px; padding: 30px; text-align: center; cursor: pointer;
+            transition: 0.2s; position: relative; background: #0a0a0a; color: #666; font-size: 12px;
+        }
+        .drop-area:hover { border-color: var(--gold); color: #fff; background: #1a1600; }
+        .drop-area input { position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor: pointer; }
+
+        /* ANALYSIS BADGES */
+        .badge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .badge { background: #1a1a1a; padding: 10px; border-radius: 4px; border: 1px solid #333; }
+        .badge label { display: block; font-size: 10px; color: #666; margin-bottom: 4px; text-transform: uppercase; }
+        .badge div { font-size: 14px; font-weight: bold; color: white; }
+
+        /* CONSOLE */
+        .console {
+            background: #000; border: 1px solid #333; flex-grow: 1; overflow-y: auto; 
+            font-size: 10px; padding: 10px; font-family: 'Consolas', monospace; color: #0f0; white-space: pre-wrap;
+        }
+        .log-err { color: #f44; }
+        .log-warn { color: orange; }
+
+        /* CHART */
+        #chart { flex-grow: 1; position: relative; }
+        .legend { position: absolute; top: 10px; left: 10px; z-index: 10; font-size: 12px; color: #fff; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="logo">TradeVision <span>AUTO-DETECT</span></div>
+    
+    <div class="drop-area" id="dropZone">
+        <div>📂 DRAG FILE HERE</div>
+        <div style="margin-top:5px; font-size:10px;">(Auto-Cleans Dirty Headers & Formats)</div>
+        <input type="file" id="fileInput" accept=".csv, .txt">
+    </div>
+
+    <div class="badge-grid">
+        <div class="badge">
+            <label>Regime State</label>
+            <div id="regimeVal" style="color: #666">---</div>
+        </div>
+        <div class="badge">
+            <label>Volatility (ATR)</label>
+            <div id="volVal" style="color: #666">---</div>
+        </div>
+    </div>
+    
+    <div class="badge">
+        <label>Next 6 Months Projection</label>
+        <div id="projVal" style="font-size: 11px; color: #888">Waiting for data...</div>
+    </div>
+
+    <div class="console" id="console">
+        <div>> System Initialized.</div>
+        <div>> Ready for dirty CSVs...</div>
+    </div>
+</div>
+
+<div id="chart">
+    <div class="legend" id="chartTitle"></div>
+</div>
+
+<script>
+    // --- 1. THE "DIRTY DATA" PARSER ---
+    // This is the core logic that fixes your specific file issues.
+    class DirtyParser {
+        static parse(text) {
+            const lines = text.trim().split('\n');
+            if (lines.length < 2) throw new Error("File too short");
+
+            // A. Header Cleaning: Remove (竄) and other garbage
+            const rawHeader = lines[0];
+            const cleanHeader = rawHeader.replace(/[^a-zA-Z0-9,]/g, "").toLowerCase();
+            const headers = cleanHeader.split(',');
+
+            // B. Column Mapping (Fuzzy Logic)
+            const map = { t: -1, o: -1, h: -1, l: -1, c: -1 };
+            headers.forEach((h, i) => {
+                if (h.includes('date') || h.includes('time')) map.t = i;
+                if (h.includes('open')) map.o = i;
+                if (h.includes('high')) map.h = i;
+                if (h.includes('low')) map.l = i;
+                if (h.includes('close')) map.c = i;
+            });
+
+            if (map.t === -1 || map.c === -1) throw new Error("Columns not found. Headers: " + headers.join(','));
+
+            // C. Row Parsing (Handling "2,30,000" quotes)
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (!line) continue;
+
+                // Regex: Split by comma ONLY if not inside quotes
+                const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                
+                try {
+                    // 1. Clean Time
+                    let tStr = parts[map.t].replace(/"/g, ''); 
+                    let timeVal;
+                    // Detect YYYY-MM-DD vs Unix
+                    if (tStr.includes('-') || tStr.includes('/')) {
+                        timeVal = new Date(tStr).getTime() / 1000;
+                    } else {
+                        timeVal = parseFloat(tStr);
+                        if (timeVal > 10000000000) timeVal /= 1000; // MS to Sec fix
+                    }
+
+                    // 2. Clean Price (Remove quotes and commas inside numbers)
+                    // Example: "3,261.45" -> 3261.45
+                    const parsePrice = (val) => parseFloat(val.replace(/"/g, '').replace(/,/g, ''));
+                    
+                    const o = parsePrice(parts[map.o]);
+                    const h = parsePrice(parts[map.h]);
+                    const l = parsePrice(parts[map.l]);
+                    const c = parsePrice(parts[map.c]);
+
+                    if (!isNaN(timeVal) && !isNaN(c)) {
+                        data.push({ time: timeVal, open: o, high: h, low: l, close: c });
+                    }
+                } catch (e) { /* Skip bad row */ }
+            }
+            return data.sort((a, b) => a.time - b.time);
+        }
+    }
+
+    // --- 2. THE ANALYST (Regime Engine) ---
+    function analyzeMarket(data) {
+        if (data.length < 20) return null;
+
+        const recent = data.slice(-20);
+        const first = recent[0].close;
+        const last = recent[recent.length - 1].close;
+        
+        // Trend %
+        const change = ((last - first) / first) * 100;
+        
+        // Volatility (ATR Proxy)
+        let sumRange = 0;
+        recent.forEach(d => sumRange += (d.high - d.low));
+        const avgRange = sumRange / recent.length;
+        const volPct = (avgRange / last) * 100;
+
+        let regime = "NEUTRAL";
+        let color = "#fff";
+        
+        if (change > 5) { regime = "STRONG BULL"; color = "#089981"; }
+        else if (change < -5) { regime = "STRONG BEAR"; color = "#f23645"; }
+        else if (volPct > 2.5) { regime = "VOLATILE CHOP"; color = "orange"; }
+        else { regime = "RANGE BOUND"; color = "#D4AF37"; }
+
+        return { regime, color, volPct, avgRange, change };
+    }
+
+    // --- 3. UI & CHART SETUP ---
+    const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+        layout: { background: { color: '#050505' }, textColor: '#888' },
+        grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
+        crosshair: { mode: 0 },
+        timeScale: { borderColor: '#333' }
+    });
+
+    const candleSeries = chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderVisible: false });
+    const simSeries = chart.addCandlestickSeries({ upColor: '#0ff', downColor: '#f0f', borderVisible: true, wickUpColor: '#0ff', wickDownColor: '#f0f' });
+
+    // --- 4. MAIN EXECUTION ---
+    function log(msg, type='') {
+        const div = document.createElement('div');
+        div.innerText = "> " + msg;
+        if (type === 'err') div.className = 'log-err';
+        document.getElementById('console').appendChild(div);
+    }
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        log(`Reading ${file.name}...`);
+        
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                // 1. PARSE
+                const cleanData = DirtyParser.parse(evt.target.result);
+                log(`Parsed ${cleanData.length} valid candles.`);
+                
+                // 2. RENDER
+                candleSeries.setData(cleanData);
+                chart.timeScale().fitContent();
+
+                // 3. ANALYZE
+                const stats = analyzeMarket(cleanData);
+                document.getElementById('regimeVal').innerText = stats.regime;
+                document.getElementById('regimeVal').style.color = stats.color;
+                document.getElementById('volVal').innerText = stats.volPct.toFixed(2) + "% (Daily)";
+
+                // 4. SIMULATE (Auto-Project)
+                log(`Projecting next 26 weeks based on ${stats.regime}...`);
+                generateSimulation(cleanData, stats);
+                
+                document.getElementById('chartTitle').innerText = `${file.name} (Auto-Analyzed)`;
+
+            } catch (err) {
+                log(err.message, 'err');
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    function generateSimulation(data, stats) {
+        const last = data[data.length - 1];
+        let current = { ...last };
+        const simData = [];
+        
+        // Determine Drift based on Regime
+        let drift = 0;
+        if (stats.regime.includes("BULL")) drift = stats.avgRange * 0.2;
+        if (stats.regime.includes("BEAR")) drift = -stats.avgRange * 0.2;
+        
+        // Interval detection
+        const interval = data[1].time - data[0].time;
+
+        for (let i = 0; i < 26; i++) { // 26 Bars (approx 6 months)
+            // Random Shock
+            const shock = (Math.random() - 0.5) * stats.avgRange * 1.5; 
+            
+            const open = current.close;
+            const close = open + drift + shock;
+            
+            // Wicks
+            const high = Math.max(open, close) + (Math.random() * stats.avgRange * 0.3);
+            const low = Math.min(open, close) - (Math.random() * stats.avgRange * 0.3);
+            
+            const nextTime = current.time + interval;
+            
+            const candle = { time: nextTime, open, high, low, close };
+            simData.push(candle);
+            current = candle;
+        }
+        
+        simSeries.setData(simData);
+        document.getElementById('projVal').innerText = "Projection: " + (drift > 0 ? "Upward Drift" : "Downward/Neutral");
+    }
+    
+    // Resize handler
+    new ResizeObserver(entries => {
+        if (entries.length) chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height });
+    }).observe(document.getElementById('chart'));
+
+</script>
+</body>
+</html>
