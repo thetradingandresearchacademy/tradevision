@@ -3,35 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradeVision | Universal Institutional Loader</title>
-    
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <title>TradeVision | Native Core Loader</title>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 
     <style>
-        :root { --bg: #000; --panel: #111; --text: #ddd; --gold: #D4AF37; --cyan: #0ff; --err: #f44; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', monospace; height: 100vh; display: flex; overflow: hidden; }
+        :root { --bg: #050505; --panel: #111; --text: #ccc; --gold: #D4AF37; --cyan: #0ff; --err: #ff4444; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: monospace; height: 100vh; display: flex; overflow: hidden; }
 
         /* SIDEBAR */
-        .sidebar { width: 320px; background: var(--panel); border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        h1 { margin: 0; font-size: 18px; color: #fff; letter-spacing: 1px; }
+        .sidebar { width: 350px; background: var(--panel); border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        h1 { margin: 0; font-size: 16px; color: #fff; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         h1 span { color: var(--gold); }
         
         .drop-area {
-            border: 2px dashed #444; border-radius: 6px; padding: 40px 20px; text-align: center;
-            cursor: pointer; transition: 0.2s; position: relative; background: #0a0a0a;
+            border: 2px dashed #444; border-radius: 4px; padding: 30px 20px; text-align: center;
+            cursor: pointer; transition: 0.2s; position: relative; background: #0a0a0a; color: #666;
         }
-        .drop-area:hover { border-color: var(--gold); background: #1a1600; }
+        .drop-area:hover { border-color: var(--gold); color: #fff; background: #1a1600; }
         .drop-area input { position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor: pointer; }
         
-        /* CONSOLE (To see what's happening) */
+        /* CONSOLE */
         .console {
-            background: #000; border: 1px solid #333; height: 150px; overflow-y: auto; 
-            font-size: 10px; padding: 10px; font-family: monospace; color: #0f0;
-            border-radius: 4px;
+            background: #000; border: 1px solid #333; flex-grow: 1; overflow-y: auto; 
+            font-size: 11px; padding: 10px; font-family: 'Consolas', monospace; color: #0f0;
+            white-space: pre-wrap;
         }
-        .log-err { color: var(--err); }
+        .log-err { color: var(--err); background: rgba(255,0,0,0.1); }
         .log-warn { color: orange; }
+        .log-data { color: #888; }
 
         .btn {
             background: var(--gold); color: #000; border: none; padding: 12px; font-weight: 800;
@@ -43,53 +42,54 @@
         #chart { flex-grow: 1; position: relative; }
         .watermark { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            color: #333; font-size: 40px; font-weight: bold; pointer-events: none;
+            color: #222; font-size: 30px; font-weight: bold; pointer-events: none; text-align: center;
         }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <h1>TradeVision <span>PRO</span></h1>
+    <h1>TradeVision <span>NATIVE</span></h1>
     
-    <div style="font-size:12px; color:#888;">Step 1: Upload Data</div>
     <div class="drop-area" id="dropZone">
-        <div>📂 DRAG FILE HERE</div>
-        <div style="font-size:10px; color:#666; margin-top:5px;">Supports: .CSV, .XLSX, .XLS</div>
-        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls">
+        <div>📂 DRAG .CSV FILE HERE</div>
+        <div style="font-size:10px; margin-top:5px;">Supports: Standard, Excel-CSV, Weird Headers</div>
+        <input type="file" id="fileInput" accept=".csv, .txt">
     </div>
 
-    <div style="font-size:12px; color:#888;">System Log:</div>
+    <div>System Log:</div>
     <div class="console" id="console">
-        <div>> System Ready.</div>
-        <div>> Waiting for file...</div>
+        <div>> Core Initialized.</div>
+        <div>> Ready for file drop...</div>
     </div>
 
     <button id="btnSim" class="btn">Generate Future</button>
 </div>
 
 <div id="chart">
-    <div class="watermark" id="watermark">NO DATA LOADED</div>
+    <div class="watermark" id="watermark">AWAITING DATA</div>
 </div>
 
 <script>
-    // --- UTILS: LOGGER ---
+    // --- LOGGER ---
     const consoleDiv = document.getElementById('console');
     function log(msg, type='info') {
         const div = document.createElement('div');
         div.innerText = `> ${msg}`;
         if(type==='err') div.className = 'log-err';
         if(type==='warn') div.className = 'log-warn';
+        if(type==='data') div.className = 'log-data';
         consoleDiv.appendChild(div);
         consoleDiv.scrollTop = consoleDiv.scrollHeight;
     }
 
-    // --- 1. CHART SETUP ---
+    // --- CHART SETUP ---
     const chartDiv = document.getElementById('chart');
     const chart = LightweightCharts.createChart(chartDiv, {
-        layout: { background: { color: '#000' }, textColor: '#ccc' },
+        layout: { background: { color: '#050505' }, textColor: '#888' },
         grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
-        timeScale: { borderColor: '#333' }
+        timeScale: { borderColor: '#333', timeVisible: true },
+        crosshair: { mode: 0 }
     });
     
     const candleSeries = chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderVisible: false });
@@ -99,138 +99,145 @@
         chart.applyOptions({ width: chartDiv.clientWidth, height: chartDiv.clientHeight });
     });
 
-    // --- 2. UNIVERSAL PARSER (SheetJS Powered) ---
-    document.getElementById('fileInput').addEventListener('change', handleFile);
-
-    async function handleFile(e) {
+    // --- NATIVE PARSER ---
+    document.getElementById('fileInput').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if(!file) return;
-        
-        log(`Reading: ${file.name}...`);
-        
-        try {
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data);
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            
-            // Convert to JSON (Array of Arrays is safer for weird headers)
-            const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-            
-            if(rawRows.length < 2) throw new Error("File is empty");
-            
-            log(`Loaded ${rawRows.length} rows. Parsing headers...`);
-            processData(rawRows);
-            
-        } catch(err) {
-            log(`FATAL: ${err.message}`, 'err');
-        }
-    }
 
-    function processData(rows) {
-        // 1. Find Header Row (Look for row containing "open" and "close")
-        let headerIdx = -1;
-        let map = { t: -1, o: -1, h: -1, l: -1, c: -1 };
+        log(`Reading ${file.name} (${(file.size/1024).toFixed(1)} KB)...`);
         
-        for(let i=0; i < Math.min(rows.length, 10); i++) {
-            const rowStr = rows[i].map(x => String(x).toLowerCase()).join(' ');
-            if(rowStr.includes('open') && rowStr.includes('close')) {
-                headerIdx = i;
-                // Map columns
-                rows[i].forEach((col, idx) => {
-                    const c = String(col).toLowerCase().replace(/[^a-z]/g, ''); // Clean "Open(竄" -> "open"
-                    if(c.includes('date') || c.includes('time')) map.t = idx;
-                    if(c.includes('open')) map.o = idx;
-                    if(c.includes('high')) map.h = idx;
-                    if(c.includes('low')) map.l = idx;
-                    if(c.includes('close')) map.c = idx;
-                });
-                break;
-            }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target.result;
+            parseCSV(text);
+        };
+        reader.onerror = () => log("Error reading file.", 'err');
+        reader.readAsText(file); // Safe for CSV/TXT
+    });
+
+    function parseCSV(rawText) {
+        const lines = rawText.trim().split('\n');
+        if(lines.length < 2) {
+            log("Error: File is empty or has no data rows.", 'err');
+            return;
         }
 
-        if(headerIdx === -1) {
-            log("Error: Could not find OHLC headers. Checking standard format...", 'warn');
-            // Fallback: Assume Standard Order [Date, Open, High, Low, Close] if headers missing
-            map = { t:0, o:1, h:2, l:3, c:4 };
-            headerIdx = 0; // Skip nothing
-        } else {
-            log(`Headers found at row ${headerIdx+1}. Mapping: [${map.t}, ${map.o}, ${map.h}, ${map.l}, ${map.c}]`);
+        // 1. CLEAN HEADERS (The Secret Sauce)
+        // Remove special chars like (竄) and convert to lowercase for matching
+        const rawHeader = lines[0];
+        const cleanHeader = rawHeader.replace(/[^a-zA-Z0-9,]/g, "").toLowerCase(); 
+        log(`Detected Header: ${cleanHeader}`, 'data');
+
+        const headers = cleanHeader.split(',');
+        
+        // 2. MAP COLUMNS
+        const map = { t: -1, o: -1, h: -1, l: -1, c: -1 };
+        headers.forEach((h, i) => {
+            if(h.includes('date') || h.includes('time')) map.t = i;
+            if(h.includes('open')) map.o = i;
+            if(h.includes('high')) map.h = i;
+            if(h.includes('low')) map.l = i;
+            if(h.includes('close')) map.c = i;
+        });
+
+        // Validation
+        if(map.t === -1 || map.c === -1) {
+            log(`CRITICAL: Could not find 'Date' or 'Close' columns.`, 'err');
+            log(`Found headers: [${headers.join(', ')}]`, 'warn');
+            return;
         }
+        log(`Mapped Cols: Time[${map.t}], Open[${map.o}], Close[${map.c}]`);
 
-        // 2. Extract Data
-        const cleanData = [];
-        for(let i = headerIdx + 1; i < rows.length; i++) {
-            const row = rows[i];
-            if(!row[map.c]) continue; // Skip empty lines
+        // 3. PARSE ROWS
+        const data = [];
+        let errors = 0;
+        
+        for(let i=1; i<lines.length; i++) {
+            let line = lines[i].trim();
+            if(!line) continue;
 
-            // Parse Time
-            let timeVal = row[map.t];
-            let date;
+            // Handle "Quoted, Comma" issue (e.g. "1,234.50")
+            // Regex splits by comma ONLY if followed by even number of quotes
+            const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             
-            // SheetJS parses dates automatically sometimes, or returns Excel serial
-            if(typeof timeVal === 'number') {
-                if(timeVal > 50000) date = timeVal / 1000; // Unix ms -> sec (approx check)
-                else if(timeVal > 1000000000) date = timeVal; // Unix sec
-                else {
-                    // Excel Serial Date Conversion
-                    date = (timeVal - 25569) * 86400; 
+            try {
+                // Parse Time
+                let tStr = parts[map.t].replace(/"/g, ''); // Remove quotes
+                let dateVal;
+
+                // Detect Date Format
+                if(tStr.includes('-') || tStr.includes('/')) {
+                    dateVal = new Date(tStr).getTime() / 1000; // String Date -> Unix
+                } else {
+                    dateVal = parseFloat(tStr); // Unix or Excel Serial
+                    if(dateVal > 10000000000) dateVal = dateVal / 1000; // MS to Sec
                 }
-            } else {
-                // String Date
-                date = new Date(timeVal).getTime() / 1000;
+
+                if(isNaN(dateVal)) throw new Error("Invalid Date");
+
+                // Parse Prices (Handle quotes)
+                const o = parseFloat(parts[map.o].replace(/"/g, ''));
+                const h = parseFloat(parts[map.h].replace(/"/g, ''));
+                const l = parseFloat(parts[map.l].replace(/"/g, ''));
+                const c = parseFloat(parts[map.c].replace(/"/g, ''));
+
+                if(isNaN(c)) throw new Error("Invalid Price");
+
+                data.push({ time: dateVal, open: o, high: h, low: l, close: c });
+
+            } catch(e) {
+                errors++;
+                if(errors < 3) log(`Row ${i} Error: ${e.message}`, 'warn');
             }
-
-            if(isNaN(date)) continue;
-
-            cleanData.push({
-                time: date,
-                open: parseFloat(row[map.o]),
-                high: parseFloat(row[map.h]),
-                low: parseFloat(row[map.l]),
-                close: parseFloat(row[map.c])
-            });
         }
 
-        // Sort and Render
-        cleanData.sort((a,b) => a.time - b.time);
-        log(`Successfully parsed ${cleanData.length} candles.`);
+        if(data.length === 0) {
+            log("Failed to parse any valid rows.", 'err');
+            return;
+        }
+
+        // Success
+        data.sort((a,b) => a.time - b.time);
+        log(`Success! Loaded ${data.length} candles.`);
+        if(errors > 0) log(`(Skipped ${errors} bad rows)`, 'warn');
         
-        candleSeries.setData(cleanData);
+        // Render
+        candleSeries.setData(data);
+        chart.timeScale().fitContent();
         document.getElementById('watermark').style.display = 'none';
         document.getElementById('btnSim').classList.add('active');
         
-        chart.timeScale().fitContent();
-        
-        // Save for Sim
-        window.historyData = cleanData;
+        // Store for Sim
+        window.historyData = data;
     }
 
-    // --- 3. SIMULATION LOGIC ---
+    // --- SIMULATION ---
     document.getElementById('btnSim').addEventListener('click', () => {
         const data = window.historyData;
         if(!data) return;
+
+        log("Running Monte Carlo Simulation...");
         
-        log("Generating Future Projection...");
-        
-        // Calculate Volatility (last 20 bars)
-        let sumVar = 0;
+        // 1. Calculate Volatility (ATR-ish)
         const lookback = Math.min(data.length, 20);
         const subset = data.slice(-lookback);
+        let sumRange = 0;
+        subset.forEach(d => sumRange += (d.high - d.low));
+        const avgRange = sumRange / lookback;
         
-        subset.forEach(d => sumVar += (d.high - d.low));
-        const avgRange = sumVar / lookback;
-        
-        // Generate 26 Bars (6 Months approx)
-        let current = data[data.length-1];
+        // 2. Generate Future
         const simData = [];
-        const interval = data[1].time - data[0].time; // Detect timeframe
-        
-        for(let i=0; i<26; i++) {
-            const drift = (Math.random() - 0.45) * avgRange; // Slight bias
+        let current = data[data.length-1];
+        // Guess interval
+        const interval = data.length > 1 ? (data[1].time - data[0].time) : 86400;
+
+        for(let i=0; i<30; i++) { // 30 Bars
+            const shock = (Math.random() - 0.48) * avgRange; // Slight Bull Bias
             const open = current.close;
-            const close = open + drift;
-            const high = Math.max(open, close) + (Math.random() * avgRange * 0.5);
-            const low = Math.min(open, close) - (Math.random() * avgRange * 0.5);
+            const close = open + shock;
+            
+            const high = Math.max(open, close) + (Math.random() * avgRange * 0.4);
+            const low = Math.min(open, close) - (Math.random() * avgRange * 0.4);
             
             current = {
                 time: current.time + interval,
@@ -240,9 +247,8 @@
         }
         
         simSeries.setData(simData);
-        log("Projection Complete.");
+        log("Projection generated (Cyan).");
     });
-
 </script>
 </body>
 </html>
