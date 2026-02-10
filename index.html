@@ -3,265 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradeVision | Institutional Simulator</title>
+    <title>TradeVision Pro | Vercel Edition</title>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         :root {
-            --bg-core: #050505;
-            --bg-panel: #111111;
-            --text-main: #ffffff;
-            --text-muted: #888888;
-            --accent-gold: #D4AF37;
-            --accent-green: #089981;
-            --accent-red: #F23645;
-            --sim-cyan: #00FFFF;
-            --border: #222222;
+            --bg: #000000;
+            --panel: #111111;
+            --text: #e0e0e0;
+            --gold: #D4AF37;
+            --green: #089981;
+            --red: #f23645;
+            --cyan: #00FFFF;
         }
-
-        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, monospace; height: 100vh; display: flex; flex-direction: column; }
         
-        body {
-            margin: 0;
-            background-color: var(--bg-core);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
         /* HEADER */
         .header {
-            height: 60px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            background: var(--bg-panel);
-            justify-content: space-between;
+            padding: 15px 20px;
+            background: var(--panel);
+            border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
         }
+        .brand { font-size: 18px; font-weight: bold; letter-spacing: -1px; }
+        .brand span { color: var(--gold); }
+        
+        /* CONTROLS */
+        .controls {
+            padding: 15px 20px;
+            display: flex; gap: 20px; align-items: center;
+            border-bottom: 1px solid #222;
+        }
+        
+        /* NATIVE FILE INPUT STYLING */
+        input[type="file"] {
+            color: #888;
+            font-size: 12px;
+        }
+        input[type="file"]::file-selector-button {
+            background: var(--gold); border: none; padding: 8px 16px; color: black; font-weight: bold; cursor: pointer; margin-right: 10px; border-radius: 4px;
+        }
+        input[type="file"]::file-selector-button:hover { opacity: 0.9; }
 
-        .brand { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand span { color: var(--accent-gold); }
-
-        /* MAIN LAYOUT */
-        .workspace {
-            display: flex;
-            flex-grow: 1;
-            overflow: hidden;
+        /* STATUS BADGES */
+        .badges { display: flex; gap: 15px; margin-left: auto; font-size: 13px; font-family: 'Consolas', monospace; }
+        .badge { display: flex; flex-direction: column; align-items: flex-end; }
+        .badge label { font-size: 10px; color: #666; text-transform: uppercase; }
+        .badge div { font-weight: bold; color: var(--text); }
+        
+        /* CHART */
+        #chart-container { flex-grow: 1; position: relative; }
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #333; font-size: 20px; font-weight: bold; pointer-events: none; }
+        
+        /* LOG CONSOLE */
+        #console {
+            height: 120px; background: #050505; border-top: 1px solid #333;
+            padding: 10px; font-family: 'Consolas', monospace; font-size: 11px; color: #888; overflow-y: auto;
         }
-
-        /* SIDEBAR */
-        .sidebar {
-            width: 320px;
-            background: var(--bg-panel);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            gap: 20px;
-            overflow-y: auto;
-        }
-
-        /* COMPONENTS */
-        .control-group { display: flex; flex-direction: column; gap: 8px; }
-        .label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; }
-
-        /* FILE UPLOAD BUTTON */
-        .file-upload-btn {
-            position: relative;
-            background: #1a1a1a;
-            border: 1px dashed #444;
-            color: var(--text-muted);
-            padding: 30px 10px;
-            text-align: center;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .file-upload-btn:hover {
-            border-color: var(--accent-gold);
-            color: var(--text-main);
-            background: rgba(212, 175, 55, 0.05);
-        }
-        .file-upload-btn input {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            opacity: 0; cursor: pointer;
-        }
-
-        /* METRICS GRID */
-        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .metric-card {
-            background: #161616;
-            border: 1px solid var(--border);
-            padding: 12px;
-            border-radius: 4px;
-        }
-        .metric-val { font-size: 16px; font-weight: 700; color: #fff; margin-top: 4px; }
-        .metric-val.bull { color: var(--accent-green); }
-        .metric-val.bear { color: var(--accent-red); }
-
-        /* LOGGER */
-        .console-log {
-            flex-grow: 1;
-            background: #000;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 10px;
-            font-family: 'Consolas', monospace;
-            font-size: 11px;
-            color: #aaa;
-            overflow-y: auto;
-            min-height: 150px;
-        }
-        .log-line { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px; }
-        .log-success { color: var(--accent-green); }
-        .log-err { color: var(--accent-red); }
-        .log-warn { color: var(--accent-gold); }
-
-        /* CHART AREA */
-        .chart-wrapper {
-            flex-grow: 1;
-            position: relative;
-            background: var(--bg-core);
-        }
-        #chart { width: 100%; height: 100%; }
-
-        .watermark {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            text-align: center; pointer-events: none; opacity: 0.3;
-        }
+        .log-row { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+        .success { color: var(--green); }
+        .error { color: var(--red); }
+        .warn { color: var(--gold); }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="brand">TradeVision <span>PRO</span></div>
-        <div style="font-size: 12px; color: #666;">v2.4.0 (Stable)</div>
+        <div class="brand">TradeVision <span>VERCEL</span></div>
+        <div style="font-size: 10px; color: #666;">Institutional Edition v3.0</div>
     </div>
 
-    <div class="workspace">
-        <div class="sidebar">
-            
-            <div class="control-group">
-                <div class="label">1. Data Source</div>
-                <div class="file-upload-btn" id="dropZone">
-                    <div>📂 Click or Drag CSV</div>
-                    <div style="font-size:10px; margin-top:5px;">Supports: Standard, Excel-CSV</div>
-                    <input type="file" id="fileInput" accept=".csv, .txt">
-                </div>
-            </div>
-
-            <div class="control-group">
-                <div class="label">2. Market Regime</div>
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="label">Trend State</div>
-                        <div class="metric-val" id="regimeVal">---</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="label">Volatility (ATR)</div>
-                        <div class="metric-val" id="volVal">---</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <div class="label">3. Monte Carlo Projection</div>
-                <div class="metric-card">
-                    <div class="label">Next 6 Months Bias</div>
-                    <div class="metric-val" id="biasVal" style="color: var(--sim-cyan);">WAITING</div>
-                </div>
-            </div>
-
-            <div class="control-group" style="flex-grow:1;">
-                <div class="label">System Kernel</div>
-                <div class="console-log" id="console">
-                    <div class="log-line">> TradeVision Kernel Initialized.</div>
-                    <div class="log-line">> Ready for input...</div>
-                </div>
-            </div>
-
+    <div class="controls">
+        <input type="file" id="fileInput" accept=".csv">
+        
+        <div class="badges">
+            <div class="badge"><label>Market Regime</label><div id="regimeVal">---</div></div>
+            <div class="badge"><label>Volatility</label><div id="volVal">---</div></div>
+            <div class="badge"><label>Status</label><div id="statusVal" style="color:var(--gold)">IDLE</div></div>
         </div>
+    </div>
 
-        <div class="chart-wrapper">
-            <div id="chart"></div>
-            <div class="watermark" id="watermark">
-                <h2>NO DATA LOADED</h2>
-            </div>
-        </div>
+    <div id="chart-container">
+        <div class="watermark" id="watermark">LOAD A CSV FILE</div>
+    </div>
+
+    <div id="console">
+        <div class="log-row">> System Initialized. Ready for CSV upload.</div>
     </div>
 
 <script>
-    // ===============================================
-    // 1. CORE UTILS
-    // ===============================================
-    const logger = document.getElementById('console');
-    
-    function log(msg, type='info') {
+    // --- 1. LOGGER UTILS ---
+    const consoleDiv = document.getElementById('console');
+    function log(msg, type='') {
         const div = document.createElement('div');
-        div.className = `log-line log-${type}`;
+        div.className = `log-row ${type}`;
         div.innerText = `> ${msg}`;
-        logger.appendChild(div);
-        logger.scrollTop = logger.scrollHeight;
+        consoleDiv.prepend(div);
     }
 
-    // ===============================================
-    // 2. CHART ENGINE SETUP
-    // ===============================================
-    const chartDiv = document.getElementById('chart');
+    // --- 2. CHART SETUP ---
+    const chartDiv = document.getElementById('chart-container');
     const chart = LightweightCharts.createChart(chartDiv, {
-        layout: { background: { color: '#050505' }, textColor: '#888' },
-        grid: { vertLines: { color: '#151515' }, horzLines: { color: '#151515' } },
-        timeScale: { borderColor: '#333', timeVisible: true },
+        layout: { background: { color: '#000' }, textColor: '#888' },
+        grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
+        timeScale: { borderColor: '#333' },
         crosshair: { mode: 0 }
     });
 
-    // Main Candle Series
-    const candleSeries = chart.addCandlestickSeries({
-        upColor: '#089981', downColor: '#f23645', borderVisible: false,
-        wickUpColor: '#089981', wickDownColor: '#f23645'
+    const candleSeries = chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderVisible: false });
+    const simSeries = chart.addCandlestickSeries({ upColor: '#00FFFF', downColor: '#FF00FF', borderVisible: true, wickUpColor:'#00FFFF', wickDownColor:'#FF00FF' });
+
+    window.addEventListener('resize', () => {
+        chart.applyOptions({ width: chartDiv.clientWidth, height: chartDiv.clientHeight });
     });
 
-    // Simulation Series (Cyan Ghost)
-    const simSeries = chart.addCandlestickSeries({
-        upColor: '#00FFFF', downColor: '#FF00FF', borderVisible: true,
-        borderColor: '#00FFFF', wickUpColor: '#00FFFF', wickDownColor: '#FF00FF'
-    });
-
-    // Auto-Resize
-    new ResizeObserver(entries => {
-        if(entries.length) {
-            chart.applyOptions({ 
-                width: entries[0].contentRect.width, 
-                height: entries[0].contentRect.height 
-            });
-        }
-    }).observe(chartDiv);
-
-    // ===============================================
-    // 3. ROBUST PARSER (PYTHON-VERIFIED LOGIC)
-    // ===============================================
+    // --- 3. ROBUST PARSER (Specific to your files) ---
     const fileInput = document.getElementById('fileInput');
     
-    fileInput.addEventListener('change', handleFile);
-    
-    // Drag & Drop Support on Body
-    document.body.addEventListener('dragover', e => e.preventDefault());
-    document.body.addEventListener('drop', e => {
-        e.preventDefault();
-        if(e.dataTransfer.files.length) {
-            fileInput.files = e.dataTransfer.files;
-            handleFile({ target: fileInput });
-        }
-    });
-
-    function handleFile(e) {
+    fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if(!file) return;
+        if (!file) return;
 
-        log(`Reading ${file.name}...`);
+        log(`Loading ${file.name} (${file.size} bytes)...`);
+        document.getElementById('statusVal').innerText = "READING...";
+
         const reader = new FileReader();
         
         reader.onload = (evt) => {
@@ -269,113 +133,96 @@
             try {
                 const data = parseCSV(text);
                 
-                // Render History
+                // RENDER
                 candleSeries.setData(data);
                 document.getElementById('watermark').style.display = 'none';
+                document.getElementById('statusVal').innerText = "ACTIVE";
+                document.getElementById('statusVal').style.color = "#089981";
                 
-                // Run Engine
-                runEngine(data);
+                // ANALYZE & SIMULATE
+                runSimulation(data);
                 
                 chart.timeScale().fitContent();
-                log(`Chart Updated.`, 'success');
+                log(`Successfully rendered ${data.length} candles.`, 'success');
 
-            } catch(err) {
-                log(err.message, 'err');
+            } catch (err) {
+                log(`ERROR: ${err.message}`, 'error');
+                document.getElementById('statusVal').innerText = "ERROR";
+                document.getElementById('statusVal').style.color = "#f23645";
             }
         };
-        
-        reader.onerror = () => log("Failed to read file.", 'err');
+
+        reader.onerror = () => log("Browser failed to read file.", 'error');
         reader.readAsText(file);
-    }
+    });
 
     function parseCSV(rawText) {
         const lines = rawText.trim().split('\n');
-        log(`Found ${lines.length} lines. Scanning headers...`);
+        const data = [];
         
-        if(lines.length < 2) throw new Error("File is empty.");
-
-        // 1. Detect Headers
-        let startRow = 1;
-        let map = { t:0, o:1, h:2, l:3, c:4 }; // Default assumption
-        let headerFound = false;
-
-        // Scan first 10 lines for "date" and "close"
+        // AUTO-DETECT HEADER ROW
+        let startRow = 0;
         for(let i=0; i<Math.min(lines.length, 10); i++) {
             const row = lines[i].toLowerCase();
-            if((row.includes('date') || row.includes('time')) && row.includes('close')) {
-                log(`Header detected at line ${i+1}`, 'success');
+            if(row.includes('date') && row.includes('close')) {
                 startRow = i + 1;
-                headerFound = true;
-                
-                const cols = row.split(',');
-                cols.forEach((col, idx) => {
-                    if(col.includes('date') || col.includes('time')) map.t = idx;
-                    if(col.includes('open')) map.o = idx;
-                    if(col.includes('high')) map.h = idx;
-                    if(col.includes('low')) map.l = idx;
-                    if(col.includes('close')) map.c = idx;
-                });
+                log(`Header detected at line ${i+1}.`, 'warn');
                 break;
             }
         }
-        
-        if(!headerFound) log("No explicit header found. Using Standard Layout.", 'warn');
 
-        // 2. Parse Data
-        const data = [];
-        let errors = 0;
-
-        for(let i=startRow; i<lines.length; i++) {
+        // PARSE LINES
+        for (let i = startRow; i < lines.length; i++) {
             const line = lines[i].trim();
-            if(!line) continue;
+            if (!line) continue;
 
-            // SIMPLE SPLIT (Reliable for first 5 cols)
+            // SIMPLE SPLIT (Works because first 5 cols are clean in your files)
             const parts = line.split(',');
-            if(parts.length < 5) continue;
+
+            if (parts.length < 5) continue;
 
             try {
-                // Parse Time
-                let tStr = parts[map.t].replace(/["']/g, ''); 
+                // DATE (Col 0)
+                let tStr = parts[0].replace(/["']/g, ''); // Clean quotes
                 let timeVal;
-
-                if(tStr.includes('-') || tStr.includes('/')) {
-                    // ISO Date
+                
+                // Handle YYYY-MM-DD
+                if (tStr.includes('-') || tStr.includes('/')) {
                     timeVal = new Date(tStr).getTime() / 1000;
                 } else {
-                    // Unix or Serial
+                    // Handle Unix/Serial
                     timeVal = parseFloat(tStr);
-                    if(timeVal > 10000000000) timeVal /= 1000;
                 }
 
-                if(isNaN(timeVal)) continue;
+                if (isNaN(timeVal)) continue;
 
-                // Parse Prices
-                const clean = val => parseFloat(val.replace(/["']/g, ''));
-                const o = clean(parts[map.o]);
-                const h = clean(parts[map.h]);
-                const l = clean(parts[map.l]);
-                const c = clean(parts[map.c]);
+                // PRICES (Cols 1-4)
+                // We parse strictly these indices, ignoring the garbage at the end
+                const o = parseFloat(parts[1]);
+                const h = parseFloat(parts[2]);
+                const l = parseFloat(parts[3]);
+                const c = parseFloat(parts[4]);
 
-                if(!isNaN(c)) {
-                    data.push({ time: timeVal, open: o, high: h, low: l, close: c });
-                }
-            } catch(e) { errors++; }
+                if (isNaN(c)) continue;
+
+                data.push({ time: timeVal, open: o, high: h, low: l, close: c });
+
+            } catch (e) {
+                // Skip bad row
+            }
         }
 
-        if(data.length === 0) throw new Error("Parsed 0 valid rows.");
+        if (data.length === 0) throw new Error("No valid data found. Check file format.");
         
-        data.sort((a,b) => a.time - b.time);
-        log(`Parsed ${data.length} candles successfully.`, 'success');
+        data.sort((a, b) => a.time - b.time);
         return data;
     }
 
-    // ===============================================
-    // 4. SIMULATION ENGINE
-    // ===============================================
-    function runEngine(data) {
-        log("Running Market Analysis...", 'warn');
+    // --- 4. SIMULATION ENGINE ---
+    function runSimulation(data) {
+        log("Running Institutional Analysis...");
         
-        // 1. Analyze Volatility & Trend (Last 20 bars)
+        // 1. VOLATILITY (ATR)
         const subset = data.slice(-20);
         let trSum = 0;
         for(let i=1; i<subset.length; i++) {
@@ -386,59 +233,54 @@
         }
         const atr = trSum / 19;
         
-        const first = subset[0].close;
-        const last = subset[subset.length-1].close;
-        const changePct = ((last - first) / first) * 100;
-
-        // 2. Define Regime
-        let regime = "RANGE";
-        let bias = "NEUTRAL";
-        let regClass = "";
-
-        if(changePct > 5) { regime = "STRONG BULL"; bias="BULLISH"; regClass="bull"; }
-        else if(changePct < -5) { regime = "STRONG BEAR"; bias="BEARISH"; regClass="bear"; }
-        else if(changePct > 2) { regime = "WEAK BULL"; bias="MILD BULL"; regClass="bull"; }
-        else if(changePct < -2) { regime = "WEAK BEAR"; bias="MILD BEAR"; regClass="bear"; }
+        // 2. TREND
+        const start = subset[0].close;
+        const end = subset[subset.length-1].close;
+        const trendPct = ((end - start) / start) * 100;
         
-        // Update UI
+        let regime = "RANGE";
+        let color = "#fff";
+        
+        if (trendPct > 4) { regime = "STRONG BULL"; color = "#089981"; }
+        else if (trendPct < -4) { regime = "STRONG BEAR"; color = "#f23645"; }
+        else if (trendPct > 1) { regime = "WEAK BULL"; color = "#089981"; }
+        else if (trendPct < -1) { regime = "WEAK BEAR"; color = "#f23645"; }
+
+        // UPDATE UI
         const rEl = document.getElementById('regimeVal');
         rEl.innerText = regime;
-        rEl.className = `metric-val ${regClass}`;
-        
+        rEl.style.color = color;
         document.getElementById('volVal').innerText = atr.toFixed(2);
-        document.getElementById('biasVal').innerText = bias;
 
-        // 3. Monte Carlo Simulation (26 Bars)
-        log("Generating Monte Carlo paths...", 'warn');
+        // 3. GENERATE PROJECTION (30 Bars)
         const simData = [];
         let current = { ...data[data.length-1] };
         
-        // Detect Interval
+        // Detect Interval (Daily vs Weekly)
         const interval = data.length > 1 ? (data[1].time - data[0].time) : 86400;
 
-        // Drift Factor
+        // Apply Drift based on Regime
         let drift = 0;
-        if(bias.includes("BULL")) drift = atr * 0.15;
-        if(bias.includes("BEAR")) drift = -atr * 0.15;
+        if(regime.includes("BULL")) drift = atr * 0.15;
+        if(regime.includes("BEAR")) drift = -atr * 0.15;
 
-        for(let i=0; i<26; i++) {
-            // Random Shock
+        for(let i=0; i<30; i++) {
+            // Monte Carlo Shock
             const shock = (Math.random() - 0.5) * atr;
             
             const open = current.close;
             const close = open + drift + shock;
-            const high = Math.max(open, close) + (Math.random() * atr * 0.4);
-            const low = Math.min(open, close) - (Math.random() * atr * 0.4);
+            const high = Math.max(open, close) + (Math.random() * atr * 0.3);
+            const low = Math.min(open, close) - (Math.random() * atr * 0.3);
             
             const nextTime = current.time + interval;
             current = { time: nextTime, open, high, low, close };
             simData.push(current);
         }
-
+        
         simSeries.setData(simData);
-        log("Simulation Complete.", 'success');
+        log("Projection generated (Cyan).", 'success');
     }
-
 </script>
 </body>
 </html>
