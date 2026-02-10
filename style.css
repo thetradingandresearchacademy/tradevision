@@ -1,0 +1,125 @@
+:root {
+    --bg-dark: #0a0a0a;
+    --bg-panel: #141414;
+    --text-main: #e0e0e0;
+    --text-muted: #888;
+    --accent: #D4AF37; /* Institutional Gold */
+    --accent-glow: rgba(212, 175, 55, 0.2);
+    --sim-bull: #00ffff; /* Cyan for Sim Up */
+    --sim-bear: #ff00ff; /* Magenta for Sim Down */
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 280px;
+    background-color: var(--bg-panel);
+    border-right: 1px solid #333;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: white;
+}
+.logo span { color: var(--accent); }
+
+.panel-section h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+/* Controls */
+.drop-zone {
+    border: 2px dashed #333;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.3s;
+    position: relative;
+}
+.drop-zone:hover {
+    border-color: var(--accent);
+    color: white;
+    background: var(--accent-glow);
+}
+.drop-zone input {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.btn-gold {
+    background: var(--accent);
+    color: black;
+    border: none;
+    padding: 12px;
+    width: 100%;
+    font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-size: 13px;
+}
+.btn-gold:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-gold:hover:not(:disabled) { box-shadow: 0 0 15px var(--accent-glow); }
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid #444;
+    color: white;
+    padding: 10px;
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    background: #333;
+    border-radius: 4px;
+    font-size: 12px;
+    color: white;
+    font-family: monospace;
+}
+
+.status-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+/* Chart */
+.chart-area {
+    flex-grow: 1;
+    background: black;
+    position: relative;
+}
