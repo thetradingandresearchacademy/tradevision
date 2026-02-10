@@ -3,53 +3,442 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradeVision V1 | Institutional Simulator</title>
-    <link rel="stylesheet" href="style.css">
+    <title>TradeVision | Institutional Simulator</title>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        :root {
+            --bg-core: #050505;
+            --bg-panel: #111111;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --accent-gold: #D4AF37;
+            --accent-green: #089981;
+            --accent-red: #F23645;
+            --sim-cyan: #00FFFF;
+            --border: #222222;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            background-color: var(--bg-core);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            height: 60px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            background: var(--bg-panel);
+            justify-content: space-between;
+        }
+
+        .brand { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand span { color: var(--accent-gold); }
+
+        /* MAIN LAYOUT */
+        .workspace {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 320px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        /* COMPONENTS */
+        .control-group { display: flex; flex-direction: column; gap: 8px; }
+        .label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; }
+
+        /* FILE UPLOAD BUTTON */
+        .file-upload-btn {
+            position: relative;
+            background: #1a1a1a;
+            border: 1px dashed #444;
+            color: var(--text-muted);
+            padding: 30px 10px;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .file-upload-btn:hover {
+            border-color: var(--accent-gold);
+            color: var(--text-main);
+            background: rgba(212, 175, 55, 0.05);
+        }
+        .file-upload-btn input {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer;
+        }
+
+        /* METRICS GRID */
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .metric-card {
+            background: #161616;
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 4px;
+        }
+        .metric-val { font-size: 16px; font-weight: 700; color: #fff; margin-top: 4px; }
+        .metric-val.bull { color: var(--accent-green); }
+        .metric-val.bear { color: var(--accent-red); }
+
+        /* LOGGER */
+        .console-log {
+            flex-grow: 1;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            color: #aaa;
+            overflow-y: auto;
+            min-height: 150px;
+        }
+        .log-line { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+        .log-success { color: var(--accent-green); }
+        .log-err { color: var(--accent-red); }
+        .log-warn { color: var(--accent-gold); }
+
+        /* CHART AREA */
+        .chart-wrapper {
+            flex-grow: 1;
+            position: relative;
+            background: var(--bg-core);
+        }
+        #chart { width: 100%; height: 100%; }
+
+        .watermark {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; pointer-events: none; opacity: 0.3;
+        }
+    </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <div class="sidebar">
-            <div class="logo">TradeVision <span>V1</span></div>
-            
-            <div class="panel-section">
-                <h3>1. Data Feed</h3>
-                <div class="drop-zone" id="dropZone">
-                    Drag CSV Here
-                    <input type="file" id="fileInput" accept=".csv">
-                </div>
-                <div id="status" class="status-text">Waiting for data...</div>
-            </div>
-
-            <div class="panel-section">
-                <h3>2. Simulation</h3>
-                <div class="stat-box">
-                    <label>Current Regime</label>
-                    <span id="regimeBadge" class="badge">---</span>
-                </div>
-                <button id="btnForward" class="btn-gold" disabled>⏩ Forward Bar (Next)</button>
-                <button id="btnAuto" class="btn-outline" disabled>▶ Auto Play</button>
-            </div>
-
-            <div class="panel-section">
-                <h3>3. Display</h3>
-                <label class="toggle">
-                    <input type="checkbox" id="toggleGhost" checked>
-                    <span class="slider"></span>
-                    Show Simulation (Cyan)
-                </label>
-            </div>
-            
-            <div class="footer">
-                Institutional Engine<br>
-                v1.0.0
-            </div>
-        </div>
-
-        <div class="chart-area" id="chartContainer"></div>
+    <div class="header">
+        <div class="brand">TradeVision <span>PRO</span></div>
+        <div style="font-size: 12px; color: #666;">v2.4.0 (Stable)</div>
     </div>
 
-    <script src="app.js"></script>
+    <div class="workspace">
+        <div class="sidebar">
+            
+            <div class="control-group">
+                <div class="label">1. Data Source</div>
+                <div class="file-upload-btn" id="dropZone">
+                    <div>📂 Click or Drag CSV</div>
+                    <div style="font-size:10px; margin-top:5px;">Supports: Standard, Excel-CSV</div>
+                    <input type="file" id="fileInput" accept=".csv, .txt">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="label">2. Market Regime</div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="label">Trend State</div>
+                        <div class="metric-val" id="regimeVal">---</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">Volatility (ATR)</div>
+                        <div class="metric-val" id="volVal">---</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="label">3. Monte Carlo Projection</div>
+                <div class="metric-card">
+                    <div class="label">Next 6 Months Bias</div>
+                    <div class="metric-val" id="biasVal" style="color: var(--sim-cyan);">WAITING</div>
+                </div>
+            </div>
+
+            <div class="control-group" style="flex-grow:1;">
+                <div class="label">System Kernel</div>
+                <div class="console-log" id="console">
+                    <div class="log-line">> TradeVision Kernel Initialized.</div>
+                    <div class="log-line">> Ready for input...</div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="chart-wrapper">
+            <div id="chart"></div>
+            <div class="watermark" id="watermark">
+                <h2>NO DATA LOADED</h2>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ===============================================
+    // 1. CORE UTILS
+    // ===============================================
+    const logger = document.getElementById('console');
+    
+    function log(msg, type='info') {
+        const div = document.createElement('div');
+        div.className = `log-line log-${type}`;
+        div.innerText = `> ${msg}`;
+        logger.appendChild(div);
+        logger.scrollTop = logger.scrollHeight;
+    }
+
+    // ===============================================
+    // 2. CHART ENGINE SETUP
+    // ===============================================
+    const chartDiv = document.getElementById('chart');
+    const chart = LightweightCharts.createChart(chartDiv, {
+        layout: { background: { color: '#050505' }, textColor: '#888' },
+        grid: { vertLines: { color: '#151515' }, horzLines: { color: '#151515' } },
+        timeScale: { borderColor: '#333', timeVisible: true },
+        crosshair: { mode: 0 }
+    });
+
+    // Main Candle Series
+    const candleSeries = chart.addCandlestickSeries({
+        upColor: '#089981', downColor: '#f23645', borderVisible: false,
+        wickUpColor: '#089981', wickDownColor: '#f23645'
+    });
+
+    // Simulation Series (Cyan Ghost)
+    const simSeries = chart.addCandlestickSeries({
+        upColor: '#00FFFF', downColor: '#FF00FF', borderVisible: true,
+        borderColor: '#00FFFF', wickUpColor: '#00FFFF', wickDownColor: '#FF00FF'
+    });
+
+    // Auto-Resize
+    new ResizeObserver(entries => {
+        if(entries.length) {
+            chart.applyOptions({ 
+                width: entries[0].contentRect.width, 
+                height: entries[0].contentRect.height 
+            });
+        }
+    }).observe(chartDiv);
+
+    // ===============================================
+    // 3. ROBUST PARSER (PYTHON-VERIFIED LOGIC)
+    // ===============================================
+    const fileInput = document.getElementById('fileInput');
+    
+    fileInput.addEventListener('change', handleFile);
+    
+    // Drag & Drop Support on Body
+    document.body.addEventListener('dragover', e => e.preventDefault());
+    document.body.addEventListener('drop', e => {
+        e.preventDefault();
+        if(e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFile({ target: fileInput });
+        }
+    });
+
+    function handleFile(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        log(`Reading ${file.name}...`);
+        const reader = new FileReader();
+        
+        reader.onload = (evt) => {
+            const text = evt.target.result;
+            try {
+                const data = parseCSV(text);
+                
+                // Render History
+                candleSeries.setData(data);
+                document.getElementById('watermark').style.display = 'none';
+                
+                // Run Engine
+                runEngine(data);
+                
+                chart.timeScale().fitContent();
+                log(`Chart Updated.`, 'success');
+
+            } catch(err) {
+                log(err.message, 'err');
+            }
+        };
+        
+        reader.onerror = () => log("Failed to read file.", 'err');
+        reader.readAsText(file);
+    }
+
+    function parseCSV(rawText) {
+        const lines = rawText.trim().split('\n');
+        log(`Found ${lines.length} lines. Scanning headers...`);
+        
+        if(lines.length < 2) throw new Error("File is empty.");
+
+        // 1. Detect Headers
+        let startRow = 1;
+        let map = { t:0, o:1, h:2, l:3, c:4 }; // Default assumption
+        let headerFound = false;
+
+        // Scan first 10 lines for "date" and "close"
+        for(let i=0; i<Math.min(lines.length, 10); i++) {
+            const row = lines[i].toLowerCase();
+            if((row.includes('date') || row.includes('time')) && row.includes('close')) {
+                log(`Header detected at line ${i+1}`, 'success');
+                startRow = i + 1;
+                headerFound = true;
+                
+                const cols = row.split(',');
+                cols.forEach((col, idx) => {
+                    if(col.includes('date') || col.includes('time')) map.t = idx;
+                    if(col.includes('open')) map.o = idx;
+                    if(col.includes('high')) map.h = idx;
+                    if(col.includes('low')) map.l = idx;
+                    if(col.includes('close')) map.c = idx;
+                });
+                break;
+            }
+        }
+        
+        if(!headerFound) log("No explicit header found. Using Standard Layout.", 'warn');
+
+        // 2. Parse Data
+        const data = [];
+        let errors = 0;
+
+        for(let i=startRow; i<lines.length; i++) {
+            const line = lines[i].trim();
+            if(!line) continue;
+
+            // SIMPLE SPLIT (Reliable for first 5 cols)
+            const parts = line.split(',');
+            if(parts.length < 5) continue;
+
+            try {
+                // Parse Time
+                let tStr = parts[map.t].replace(/["']/g, ''); 
+                let timeVal;
+
+                if(tStr.includes('-') || tStr.includes('/')) {
+                    // ISO Date
+                    timeVal = new Date(tStr).getTime() / 1000;
+                } else {
+                    // Unix or Serial
+                    timeVal = parseFloat(tStr);
+                    if(timeVal > 10000000000) timeVal /= 1000;
+                }
+
+                if(isNaN(timeVal)) continue;
+
+                // Parse Prices
+                const clean = val => parseFloat(val.replace(/["']/g, ''));
+                const o = clean(parts[map.o]);
+                const h = clean(parts[map.h]);
+                const l = clean(parts[map.l]);
+                const c = clean(parts[map.c]);
+
+                if(!isNaN(c)) {
+                    data.push({ time: timeVal, open: o, high: h, low: l, close: c });
+                }
+            } catch(e) { errors++; }
+        }
+
+        if(data.length === 0) throw new Error("Parsed 0 valid rows.");
+        
+        data.sort((a,b) => a.time - b.time);
+        log(`Parsed ${data.length} candles successfully.`, 'success');
+        return data;
+    }
+
+    // ===============================================
+    // 4. SIMULATION ENGINE
+    // ===============================================
+    function runEngine(data) {
+        log("Running Market Analysis...", 'warn');
+        
+        // 1. Analyze Volatility & Trend (Last 20 bars)
+        const subset = data.slice(-20);
+        let trSum = 0;
+        for(let i=1; i<subset.length; i++) {
+            const h = subset[i].high;
+            const l = subset[i].low;
+            const pc = subset[i-1].close;
+            trSum += Math.max(h-l, Math.abs(h-pc), Math.abs(l-pc));
+        }
+        const atr = trSum / 19;
+        
+        const first = subset[0].close;
+        const last = subset[subset.length-1].close;
+        const changePct = ((last - first) / first) * 100;
+
+        // 2. Define Regime
+        let regime = "RANGE";
+        let bias = "NEUTRAL";
+        let regClass = "";
+
+        if(changePct > 5) { regime = "STRONG BULL"; bias="BULLISH"; regClass="bull"; }
+        else if(changePct < -5) { regime = "STRONG BEAR"; bias="BEARISH"; regClass="bear"; }
+        else if(changePct > 2) { regime = "WEAK BULL"; bias="MILD BULL"; regClass="bull"; }
+        else if(changePct < -2) { regime = "WEAK BEAR"; bias="MILD BEAR"; regClass="bear"; }
+        
+        // Update UI
+        const rEl = document.getElementById('regimeVal');
+        rEl.innerText = regime;
+        rEl.className = `metric-val ${regClass}`;
+        
+        document.getElementById('volVal').innerText = atr.toFixed(2);
+        document.getElementById('biasVal').innerText = bias;
+
+        // 3. Monte Carlo Simulation (26 Bars)
+        log("Generating Monte Carlo paths...", 'warn');
+        const simData = [];
+        let current = { ...data[data.length-1] };
+        
+        // Detect Interval
+        const interval = data.length > 1 ? (data[1].time - data[0].time) : 86400;
+
+        // Drift Factor
+        let drift = 0;
+        if(bias.includes("BULL")) drift = atr * 0.15;
+        if(bias.includes("BEAR")) drift = -atr * 0.15;
+
+        for(let i=0; i<26; i++) {
+            // Random Shock
+            const shock = (Math.random() - 0.5) * atr;
+            
+            const open = current.close;
+            const close = open + drift + shock;
+            const high = Math.max(open, close) + (Math.random() * atr * 0.4);
+            const low = Math.min(open, close) - (Math.random() * atr * 0.4);
+            
+            const nextTime = current.time + interval;
+            current = { time: nextTime, open, high, low, close };
+            simData.push(current);
+        }
+
+        simSeries.setData(simData);
+        log("Simulation Complete.", 'success');
+    }
+
+</script>
 </body>
 </html>
