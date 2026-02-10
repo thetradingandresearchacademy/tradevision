@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeVision V1 | Institutional Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="logo">TradeVision <span>V1</span></div>
+            
+            <div class="panel-section">
+                <h3>1. Data Feed</h3>
+                <div class="drop-zone" id="dropZone">
+                    Drag CSV Here
+                    <input type="file" id="fileInput" accept=".csv">
+                </div>
+                <div id="status" class="status-text">Waiting for data...</div>
+            </div>
+
+            <div class="panel-section">
+                <h3>2. Simulation</h3>
+                <div class="stat-box">
+                    <label>Current Regime</label>
+                    <span id="regimeBadge" class="badge">---</span>
+                </div>
+                <button id="btnForward" class="btn-gold" disabled>⏩ Forward Bar (Next)</button>
+                <button id="btnAuto" class="btn-outline" disabled>▶ Auto Play</button>
+            </div>
+
+            <div class="panel-section">
+                <h3>3. Display</h3>
+                <label class="toggle">
+                    <input type="checkbox" id="toggleGhost" checked>
+                    <span class="slider"></span>
+                    Show Simulation (Cyan)
+                </label>
+            </div>
+            
+            <div class="footer">
+                Institutional Engine<br>
+                v1.0.0
+            </div>
+        </div>
+
+        <div class="chart-area" id="chartContainer"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
