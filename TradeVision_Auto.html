@@ -3,296 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradeVision V1.1 | Auto-Detect Engine</title>
+    <title>TradeVision | Universal Institutional Loader</title>
+    
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    <style>
-        :root {
-            --bg-dark: #0a0a0a;
-            --bg-panel: #141414;
-            --text-main: #e0e0e0;
-            --text-muted: #888;
-            --accent: #D4AF37;
-            --accent-glow: rgba(212, 175, 55, 0.2);
-            --bull: #089981;
-            --bear: #f23645;
-            --sim: #00ffff;
-        }
-        body { margin: 0; background: var(--bg-dark); color: var(--text-main); font-family: monospace; height: 100vh; display: flex; overflow: hidden; }
-        
-        /* SIDEBAR */
-        .sidebar { width: 300px; background: var(--bg-panel); border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        .logo { font-size: 20px; font-weight: bold; color: white; letter-spacing: -1px; }
-        .logo span { color: var(--accent); }
-        
-        .drop-zone {
-            border: 2px dashed #444; border-radius: 8px; padding: 30px; text-align: center;
-            color: var(--text-muted); transition: 0.3s; position: relative; cursor: pointer;
-        }
-        .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-glow); color: white; }
-        .drop-zone input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-        
-        .status { font-size: 11px; color: var(--text-muted); margin-top: 5px; min-height: 15px; }
-        
-        .panel { background: #1a1a1a; padding: 15px; border-radius: 6px; border: 1px solid #333; }
-        .panel h3 { margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; color: var(--text-muted); }
-        .stat-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
-        .stat-val { font-weight: bold; color: white; }
-        
-        .btn { background: var(--accent); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; border-radius: 4px; }
-        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .btn:hover:not(:disabled) { opacity: 0.9; }
 
+    <style>
+        :root { --bg: #000; --panel: #111; --text: #ddd; --gold: #D4AF37; --cyan: #0ff; --err: #f44; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', monospace; height: 100vh; display: flex; overflow: hidden; }
+
+        /* SIDEBAR */
+        .sidebar { width: 320px; background: var(--panel); border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        h1 { margin: 0; font-size: 18px; color: #fff; letter-spacing: 1px; }
+        h1 span { color: var(--gold); }
+        
+        .drop-area {
+            border: 2px dashed #444; border-radius: 6px; padding: 40px 20px; text-align: center;
+            cursor: pointer; transition: 0.2s; position: relative; background: #0a0a0a;
+        }
+        .drop-area:hover { border-color: var(--gold); background: #1a1600; }
+        .drop-area input { position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor: pointer; }
+        
+        /* CONSOLE (To see what's happening) */
+        .console {
+            background: #000; border: 1px solid #333; height: 150px; overflow-y: auto; 
+            font-size: 10px; padding: 10px; font-family: monospace; color: #0f0;
+            border-radius: 4px;
+        }
+        .log-err { color: var(--err); }
+        .log-warn { color: orange; }
+
+        .btn {
+            background: var(--gold); color: #000; border: none; padding: 12px; font-weight: 800;
+            cursor: pointer; text-transform: uppercase; border-radius: 4px; opacity: 0.5; pointer-events: none;
+        }
+        .btn.active { opacity: 1; pointer-events: all; }
+        
         /* CHART */
         #chart { flex-grow: 1; position: relative; }
-        .floating-legend { position: absolute; top: 20px; left: 20px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 4px; pointer-events: none; border: 1px solid #333; }
-        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 4px; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .watermark { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            color: #333; font-size: 40px; font-weight: bold; pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <div class="logo">TradeVision <span>AUTO</span></div>
+    <h1>TradeVision <span>PRO</span></h1>
     
-    <div class="drop-zone" id="dropZone">
-        DROP CSV FILE HERE
-        <input type="file" id="fileInput" accept=".csv">
-    </div>
-    <div id="status" class="status">Waiting for data...</div>
-
-    <div class="panel">
-        <h3>Market Analysis</h3>
-        <div class="stat-row"><span>Regime:</span> <span id="regimeVal" class="stat-val" style="color:yellow">---</span></div>
-        <div class="stat-row"><span>Volatility:</span> <span id="volVal" class="stat-val">---</span></div>
-        <div class="stat-row"><span>Trend:</span> <span id="trendVal" class="stat-val">---</span></div>
+    <div style="font-size:12px; color:#888;">Step 1: Upload Data</div>
+    <div class="drop-area" id="dropZone">
+        <div>📂 DRAG FILE HERE</div>
+        <div style="font-size:10px; color:#666; margin-top:5px;">Supports: .CSV, .XLSX, .XLS</div>
+        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls">
     </div>
 
-    <div class="panel">
-        <h3>Simulation</h3>
-        <button id="btnSim" class="btn" disabled>RE-GENERATE FUTURE ↻</button>
+    <div style="font-size:12px; color:#888;">System Log:</div>
+    <div class="console" id="console">
+        <div>> System Ready.</div>
+        <div>> Waiting for file...</div>
     </div>
-    
-    <div style="margin-top:auto; font-size:10px; color:#555;">
-        Supported: Standard CSV, Excel-CSV, TradingView Exports
-    </div>
+
+    <button id="btnSim" class="btn">Generate Future</button>
 </div>
 
 <div id="chart">
-    <div class="floating-legend">
-        <div class="legend-item"><div class="dot" style="background:var(--bull)"></div> Historical Data</div>
-        <div class="legend-item"><div class="dot" style="background:var(--sim)"></div> Projected Path (Sim)</div>
-    </div>
+    <div class="watermark" id="watermark">NO DATA LOADED</div>
 </div>
 
 <script>
-    // --- 1. SETUP CHART ---
-    const chartContainer = document.getElementById('chart');
-    const chart = LightweightCharts.createChart(chartContainer, {
-        layout: { background: { color: '#0a0a0a' }, textColor: '#ccc' },
-        grid: { vertLines: { color: '#222' }, horzLines: { color: '#222' } },
-        timeScale: { borderColor: '#444' },
-        crosshair: { mode: 0 }
-    });
-
-    const candleSeries = chart.addCandlestickSeries({
-        upColor: '#089981', downColor: '#f23645', borderVisible: false, wickUpColor: '#089981', wickDownColor: '#f23645'
-    });
-    
-    // The "Ghost" Series for Projection
-    const simSeries = chart.addCandlestickSeries({
-        upColor: '#00ffff', downColor: '#ff00ff', borderVisible: true, borderColor: '#00ffff', wickUpColor: '#00ffff', wickDownColor: '#ff00ff'
-    });
-
-    // Resize Logic
-    window.addEventListener('resize', () => {
-        chart.applyOptions({ width: chartContainer.clientWidth, height: chartContainer.clientHeight });
-    });
-
-    // --- 2. ROBUST PARSER (The Fix) ---
-    // Handles specific messy headers from your files
-    function parseCSV(text) {
-        const lines = text.trim().split('\n');
-        if(lines.length < 2) return null;
-
-        // Header Detection
-        const header = lines[0].toLowerCase();
-        // Remove weird chars like '(', ')'
-        const cleanHeader = header.replace(/[^a-z0-9,]/g, ""); 
-        const cols = cleanHeader.split(',');
-
-        // Map Columns
-        let tIdx = -1, oIdx = -1, hIdx = -1, lIdx = -1, cIdx = -1;
-
-        // Find indices (order doesn't matter now)
-        cols.forEach((col, i) => {
-            if(col.includes('date') || col.includes('time')) tIdx = i;
-            if(col === 'open' || col.startsWith('open')) oIdx = i;
-            if(col === 'high' || col.startsWith('high')) hIdx = i;
-            if(col === 'low' || col.startsWith('low')) lIdx = i;
-            if(col === 'close' || col.startsWith('close')) cIdx = i;
-        });
-
-        if(tIdx === -1 || cIdx === -1) {
-            alert("Could not detect Date or Close columns. Please check CSV.");
-            return null;
-        }
-
-        const data = [];
-        // Start parsing rows
-        for(let i=1; i<lines.length; i++) {
-            const row = lines[i].split(','); // Simple split safe for first few cols
-            if(row.length < 5) continue;
-
-            try {
-                let timeVal = row[tIdx];
-                // Fix Date: 2023-01-01 or Unix
-                let date;
-                if(timeVal.includes('-') || timeVal.includes('/')) {
-                    date = new Date(timeVal).getTime() / 1000;
-                } else {
-                    date = parseFloat(timeVal);
-                    // If Excel serial date (e.g. 45000) - unlikely in CSV but possible
-                    // If Unix ms > 1000000000000 -> /1000
-                }
-
-                // Check for NaNs
-                if(isNaN(date)) continue;
-
-                data.push({
-                    time: date,
-                    open: parseFloat(row[oIdx]),
-                    high: parseFloat(row[hIdx]),
-                    low: parseFloat(row[lIdx]),
-                    close: parseFloat(row[cIdx])
-                });
-            } catch(e) { console.warn("Row skip", i); }
-        }
-        return data.sort((a,b) => a.time - b.time);
+    // --- UTILS: LOGGER ---
+    const consoleDiv = document.getElementById('console');
+    function log(msg, type='info') {
+        const div = document.createElement('div');
+        div.innerText = `> ${msg}`;
+        if(type==='err') div.className = 'log-err';
+        if(type==='warn') div.className = 'log-warn';
+        consoleDiv.appendChild(div);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
     }
 
-    // --- 3. APP LOGIC ---
-    let historicalData = [];
-    const btnSim = document.getElementById('btnSim');
-    const status = document.getElementById('status');
-    const regimeVal = document.getElementById('regimeVal');
-    const volVal = document.getElementById('volVal');
-    const trendVal = document.getElementById('trendVal');
+    // --- 1. CHART SETUP ---
+    const chartDiv = document.getElementById('chart');
+    const chart = LightweightCharts.createChart(chartDiv, {
+        layout: { background: { color: '#000' }, textColor: '#ccc' },
+        grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
+        timeScale: { borderColor: '#333' }
+    });
+    
+    const candleSeries = chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderVisible: false });
+    const simSeries = chart.addCandlestickSeries({ upColor: '#0ff', downColor: '#f0f', borderVisible: true, wickUpColor: '#0ff', wickDownColor: '#f0f' });
 
-    // Handle File Drop
-    document.getElementById('fileInput').addEventListener('change', (e) => {
+    window.addEventListener('resize', () => {
+        chart.applyOptions({ width: chartDiv.clientWidth, height: chartDiv.clientHeight });
+    });
+
+    // --- 2. UNIVERSAL PARSER (SheetJS Powered) ---
+    document.getElementById('fileInput').addEventListener('change', handleFile);
+
+    async function handleFile(e) {
         const file = e.target.files[0];
         if(!file) return;
         
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            status.innerText = "Parsing...";
-            const parsed = parseCSV(event.target.result);
+        log(`Reading: ${file.name}...`);
+        
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             
-            if(parsed && parsed.length > 0) {
-                historicalData = parsed;
-                candleSeries.setData(historicalData);
-                simSeries.setData([]); // Clear old sim
-                
-                status.innerText = `Loaded ${parsed.length} bars. Analyzing...`;
-                status.style.color = "#0f0";
-                
-                // Auto Run Analysis & Sim
-                runAnalysis();
-                generateSimulation();
-                
-                btnSim.disabled = false;
-                chart.timeScale().fitContent();
-            } else {
-                status.innerText = "Error parsing file.";
-                status.style.color = "red";
-            }
-        };
-        reader.readAsText(file);
-    });
-
-    // Logic: Regime Engine
-    function runAnalysis() {
-        const lookback = 20;
-        if(historicalData.length < lookback) return;
-        
-        const subset = historicalData.slice(-lookback);
-        const first = subset[0].close;
-        const last = subset[subset.length-1].close;
-        
-        // Trend
-        const change = (last - first) / first;
-        let trend = "NEUTRAL";
-        if(change > 0.05) trend = "BULLISH";
-        if(change < -0.05) trend = "BEARISH";
-        
-        // Volatility (ATR-ish)
-        let sumRange = 0;
-        subset.forEach(d => sumRange += (d.high - d.low));
-        const avgRange = sumRange / subset.length;
-        const volPct = (avgRange / last) * 100;
-        
-        // Update UI
-        trendVal.innerText = trend;
-        trendVal.style.color = trend === "BULLISH" ? "#0f0" : (trend === "BEARISH" ? "#f00" : "#fff");
-        volVal.innerText = volPct.toFixed(2) + "%";
-        
-        // Regime
-        if(volPct > 2.0) regimeVal.innerText = "VOLATILE " + trend;
-        else regimeVal.innerText = "QUIET " + trend;
+            // Convert to JSON (Array of Arrays is safer for weird headers)
+            const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            
+            if(rawRows.length < 2) throw new Error("File is empty");
+            
+            log(`Loaded ${rawRows.length} rows. Parsing headers...`);
+            processData(rawRows);
+            
+        } catch(err) {
+            log(`FATAL: ${err.message}`, 'err');
+        }
     }
 
-    // Logic: Simulation Engine
-    function generateSimulation() {
-        if(historicalData.length === 0) return;
+    function processData(rows) {
+        // 1. Find Header Row (Look for row containing "open" and "close")
+        let headerIdx = -1;
+        let map = { t: -1, o: -1, h: -1, l: -1, c: -1 };
         
-        const lastReal = historicalData[historicalData.length - 1];
-        let currentPrice = lastReal.close;
-        let currentTime = lastReal.time;
-        
-        // Get Volatility from last 10 candles
-        const last10 = historicalData.slice(-10);
-        let volSum = 0;
-        last10.forEach(d => volSum += (d.high - d.low));
-        const avgVol = volSum / 10; // Average range
-        
-        // Trend Drift
-        const trendTxt = trendVal.innerText;
-        let drift = 0;
-        if(trendTxt.includes("BULLISH")) drift = avgVol * 0.1;
-        if(trendTxt.includes("BEARISH")) drift = -avgVol * 0.1;
-        
-        const simData = [];
-        const barsToSim = 26; // 6 months (approx 26 weeks)
-        
-        // Interval detection (Daily 86400 or Weekly 604800?)
-        const t1 = historicalData[historicalData.length-1].time;
-        const t2 = historicalData[historicalData.length-2].time;
-        const interval = t1 - t2; 
+        for(let i=0; i < Math.min(rows.length, 10); i++) {
+            const rowStr = rows[i].map(x => String(x).toLowerCase()).join(' ');
+            if(rowStr.includes('open') && rowStr.includes('close')) {
+                headerIdx = i;
+                // Map columns
+                rows[i].forEach((col, idx) => {
+                    const c = String(col).toLowerCase().replace(/[^a-z]/g, ''); // Clean "Open(竄" -> "open"
+                    if(c.includes('date') || c.includes('time')) map.t = idx;
+                    if(c.includes('open')) map.o = idx;
+                    if(c.includes('high')) map.h = idx;
+                    if(c.includes('low')) map.l = idx;
+                    if(c.includes('close')) map.c = idx;
+                });
+                break;
+            }
+        }
 
-        for(let i=0; i<barsToSim; i++) {
-            // Random Shock
-            const shock = (Math.random() - 0.5) * avgVol * 1.5; 
+        if(headerIdx === -1) {
+            log("Error: Could not find OHLC headers. Checking standard format...", 'warn');
+            // Fallback: Assume Standard Order [Date, Open, High, Low, Close] if headers missing
+            map = { t:0, o:1, h:2, l:3, c:4 };
+            headerIdx = 0; // Skip nothing
+        } else {
+            log(`Headers found at row ${headerIdx+1}. Mapping: [${map.t}, ${map.o}, ${map.h}, ${map.l}, ${map.c}]`);
+        }
+
+        // 2. Extract Data
+        const cleanData = [];
+        for(let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if(!row[map.c]) continue; // Skip empty lines
+
+            // Parse Time
+            let timeVal = row[map.t];
+            let date;
             
-            const open = currentPrice;
-            const close = currentPrice + drift + shock;
-            
-            const high = Math.max(open, close) + (Math.random() * avgVol * 0.5);
-            const low = Math.min(open, close) - (Math.random() * avgVol * 0.5);
-            
-            currentTime += interval;
-            
-            simData.push({
-                time: currentTime,
-                open: open, high: high, low: low, close: close
+            // SheetJS parses dates automatically sometimes, or returns Excel serial
+            if(typeof timeVal === 'number') {
+                if(timeVal > 50000) date = timeVal / 1000; // Unix ms -> sec (approx check)
+                else if(timeVal > 1000000000) date = timeVal; // Unix sec
+                else {
+                    // Excel Serial Date Conversion
+                    date = (timeVal - 25569) * 86400; 
+                }
+            } else {
+                // String Date
+                date = new Date(timeVal).getTime() / 1000;
+            }
+
+            if(isNaN(date)) continue;
+
+            cleanData.push({
+                time: date,
+                open: parseFloat(row[map.o]),
+                high: parseFloat(row[map.h]),
+                low: parseFloat(row[map.l]),
+                close: parseFloat(row[map.c])
             });
+        }
+
+        // Sort and Render
+        cleanData.sort((a,b) => a.time - b.time);
+        log(`Successfully parsed ${cleanData.length} candles.`);
+        
+        candleSeries.setData(cleanData);
+        document.getElementById('watermark').style.display = 'none';
+        document.getElementById('btnSim').classList.add('active');
+        
+        chart.timeScale().fitContent();
+        
+        // Save for Sim
+        window.historyData = cleanData;
+    }
+
+    // --- 3. SIMULATION LOGIC ---
+    document.getElementById('btnSim').addEventListener('click', () => {
+        const data = window.historyData;
+        if(!data) return;
+        
+        log("Generating Future Projection...");
+        
+        // Calculate Volatility (last 20 bars)
+        let sumVar = 0;
+        const lookback = Math.min(data.length, 20);
+        const subset = data.slice(-lookback);
+        
+        subset.forEach(d => sumVar += (d.high - d.low));
+        const avgRange = sumVar / lookback;
+        
+        // Generate 26 Bars (6 Months approx)
+        let current = data[data.length-1];
+        const simData = [];
+        const interval = data[1].time - data[0].time; // Detect timeframe
+        
+        for(let i=0; i<26; i++) {
+            const drift = (Math.random() - 0.45) * avgRange; // Slight bias
+            const open = current.close;
+            const close = open + drift;
+            const high = Math.max(open, close) + (Math.random() * avgRange * 0.5);
+            const low = Math.min(open, close) - (Math.random() * avgRange * 0.5);
             
-            currentPrice = close;
+            current = {
+                time: current.time + interval,
+                open: open, high: high, low: low, close: close
+            };
+            simData.push(current);
         }
         
         simSeries.setData(simData);
-    }
-
-    btnSim.addEventListener('click', generateSimulation);
+        log("Projection Complete.");
+    });
 
 </script>
 </body>
